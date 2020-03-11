@@ -13,7 +13,7 @@ Parent: <AttackCmdrAction>
 
 CLASS("QRFCmdrAction", "AttackCmdrAction")
 	// The target cluster model ID
-	VARIABLE("tgtClusterId");
+	VARIABLE_ATTR("tgtClusterId", [ATTR_SAVE]);
 
 	/*
 	Constructor: new
@@ -31,11 +31,6 @@ CLASS("QRFCmdrAction", "AttackCmdrAction")
 
 		// Target can be modified during the action, if the initial target dies, so we want it to save/restore.
 		T_SET_AST_VAR("targetVar", [TARGET_TYPE_CLUSTER ARG _tgtClusterId]);
-
-#ifdef DEBUG_CMDRAI
-		T_SETV("debugColor", "ColorRed");
-		T_SETV("debugSymbol", "mil_destroy")
-#endif
 	} ENDMETHOD;
 
 	// Create the intel object for this action
@@ -165,7 +160,7 @@ CLASS("QRFCmdrAction", "AttackCmdrAction")
 
 		// Bail if we have failed to allocate resources
 		if ((count _allocResult) == 0) exitWith {
-			OOP_DEBUG_MSG("Failed to allocate resources", []);
+			OOP_DEBUG_MSG("Failed to allocate resources: %1", [_args]);
 			T_CALLM("setScore", [ZERO_SCORE]);
 		};
 
@@ -207,26 +202,17 @@ CLASS("QRFCmdrAction", "AttackCmdrAction")
 		// We scale up the influence of distance in the case of QRFs as reaction time is most important.
 		private _distCoeff = CALLSM("CmdrAction", "calcDistanceFalloff", [_srcGarrPos ARG _tgtClusterPos ARG 4]);
 		_distCoeff = _distCoeff ^ 1.5; // Make it decrease with distance faster
-		private _transportationScore = if(!_needTransport) then {
-			// If we are less than 1000m then we don't need transport so set the transport score to 1
-			// (we "fullfilled" the transport requirements of not needing transport)
-			1
-		} else {
-			//CALLM1(_srcGarr, "transportationScore", _effRemaining)
-			// We probably don't care if we have enough transport left in case of QRF?
-			1
-		};
 
 		// Our final resource score combining available efficiency, distance and transportation.
-		private _scoreResource = _detachEffStrength * _distCoeff * _transportationScore;
+		private _scoreResource = _detachEffStrength * _distCoeff;
 
 		// TODO: implement priority score for TakeLocationCmdrAction
 		// TODO:OPT cache these scores!
 		private _scorePriority = 1;
 
-		// OOP_DEBUG_MSG("[w %1 a %2] %3 take %4 Score %5, _effAllocated = %6, _detachEffStrength = %7, _distCoeff = %8, _transportationScore = %9",
+		// OOP_DEBUG_MSG("[w %1 a %2] %3 take %4 Score %5, _effAllocated = %6, _detachEffStrength = %7, _distCoeff = %8",
 		// 	[_worldNow ARG _thisObject ARG LABEL(_srcGarr) ARG LABEL(_tgtCluster) ARG [_scorePriority ARG _scoreResource] 
-		// 	ARG _effAllocated ARG _detachEffStrength ARG _distCoeff ARG _transportationScore]);
+		// 	ARG _effAllocated ARG _detachEffStrength ARG _distCoeff]);
 
 		// APPLY STRATEGY
 		// Get our Cmdr strategy implementation and apply it
@@ -314,6 +300,8 @@ CLASS("QRFCmdrAction", "AttackCmdrAction")
 	} ENDMETHOD;
 
 ENDCLASS;
+
+REGISTER_DEBUG_MARKER_STYLE("QRFCmdrAction", "ColorRed", "mil_destroy");
 
 #ifdef _SQF_VM
 

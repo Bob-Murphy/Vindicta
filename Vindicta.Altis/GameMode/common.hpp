@@ -1,12 +1,4 @@
-#define OOP_DEBUG
-#define OOP_INFO
-#define OOP_ERROR
-#define OOP_WARNING
-#define OOP_ASSERT
 #define OFSTREAM_FILE "GameMode.rpt"
-
-//#define OOP_PROFILE
-//#define OOP_PROFILE_MIN_T 0.001
 
 #include "..\OOP_Light\OOP_Light.h"
 #include "..\Message\Message.hpp"
@@ -17,11 +9,10 @@
 #include "..\Group\Group.hpp"
 #include "..\Location\Location.hpp"
 #include "..\CivilianPresence\CivilianPresence.hpp"
-//#include "..\Undercover\UndercoverMonitor.hpp"
+#include "..\Undercover\UndercoverMonitor.hpp"
 
 #define CITY_STATE_STABLE 0
 #define CITY_STATE_AGITATED 1
 #define CITY_STATE_IN_REVOLT 2
 #define CITY_STATE_SUPPRESSED 3
 #define CITY_STATE_LIBERATED 4
-

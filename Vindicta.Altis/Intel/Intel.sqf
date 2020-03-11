@@ -247,7 +247,7 @@ CLASS("IntelLocation", "Intel")
 	If this variable is equal to [], it means unit amounts are not known
 	*/
 	VARIABLE_ATTR("unitData", [ATTR_SERIALIZABLE]);
-	
+
 	/* variable: accuracyRadius
 	Number, radius in meters that specifies how accurate is the intel.
 	The actual location should be somewhere within this radius.
@@ -313,7 +313,7 @@ CLASS("IntelLocation", "Intel")
 		/*if (! (T_GETV("unitData") isEqualTo GETV(_intelSrc, "unitData"))) then {
 			_string = _string + " Updated unit data.";
 		};*/
-		
+
 		// Add notification
 		if (_needNotify && (! isRemoteExecutedJIP) && (time > 60) ) then {
 			pr _typeStr = CALLSM1("Location", "getTypeString", _type);
@@ -348,11 +348,15 @@ CLASS("IntelLocation", "Intel")
 		};
 		*/
 
-		pr _color = switch(_side) do { // See colors defined right above the class
-			case WEST: {[COLOR_WEST, "ColorWEST"]};
-			case EAST: {[COLOR_EAST, "ColorEAST"]};
-			case INDEPENDENT: {[COLOR_IND, "ColorGUER"]};
-			default {[COLOR_UNKNOWN, "ColorUNKNOWN"]}; // Purple color
+		pr _color = if (_type == LOCATION_TYPE_RESPAWN) then {	// Override for respawn marker, it must be very visible
+			[[0.3, 0.3, 1], "ColorOrange"]
+		} else {
+			switch(_side) do { // See colors defined right above the class
+				case WEST: {[COLOR_WEST, "ColorWEST"]};
+				case EAST: {[COLOR_EAST, "ColorEAST"]};
+				case INDEPENDENT: {[COLOR_IND, "ColorGUER"]};
+				default {[COLOR_UNKNOWN, "ColorUNKNOWN"]}; // Purple color
+			};
 		};
 
 		//diag_log format ["--- Setting color: %1", _color];
@@ -495,33 +499,21 @@ CLASS("IntelCommanderAction", "Intel")
 		if (! isRemoteExecutedJIP) then { // Only if not JIP
 			pr _intel = _thisObject;
 			pr _actionName = CALLM0(_intel, "getShortName");
-			pr _dateDeparture = GETV(_intel, "dateDeparture");
 
-			pr _dateDeparture = GETV(_intel, "dateDeparture");
-			pr _dateNow = date;
-			pr _numberDiff = (_dateDeparture call misc_fnc_dateToNumber) - (date call misc_fnc_dateToNumber);
-			pr _futureEvent = true;
-			if (_numberDiff < 0) then {
-				_numberDiff = -_numberDiff;
-				_futureEvent = false;
-			};
-			pr _dateDiff = numberToDate [/*_dateNow#0*/0, _numberDiff];
-			_dateDiff params ["_y", "_month", "_d", "_h", "_m"];
-			_month = _month - 1; // Because month counting starts with 1
-			_d = _d - 1; // Because day counting starts with 1
+			CALLM0(_intel, "getHoursMinutes") params ["_t", "_h", "_m", "_future"];
 
-			OOP_INFO_3("  Intel: %1, departure date: %2, diff: %3", _intel, _dateDeparture, _dateDiff);
-			
+			OOP_INFO_2("  Intel: %1, T:%2m", _intel, _t);
+
 			// Make a string representation of time difference
 			pr _timeDiffStr = if (_h > 0) then {
-				format ["%1H, %2M", _h, round _m]
+				format ["%1h %2m", _h, _m]
 			} else {
-				format ["%1M", round _m]
+				format ["%1m", _m]
 			};
-			pr _timeStr = if (_futureEvent) then {
-				format ["Will start in %1", _timeDiffStr];
+			pr _timeStr = if (_future) then {
+				format ["will start in %1", _timeDiffStr];
 			} else {
-				format ["Started %1 ago", _timeDiffStr];
+				format ["started %1 ago", _timeDiffStr];
 			};
 
 			pr _method = GETV(_intel, "method");
@@ -531,7 +523,7 @@ CLASS("IntelCommanderAction", "Intel")
 				"INTEL INTERCEPTED BY RADIO"
 			};
 			pr _text = format ["%1 %2", _actionName, _timeStr];
-			pr _args = [_categoryText, _text, ""];
+			pr _args = [_categoryText, _text];
 			CALLSM("NotificationFactory", "createIntelCommanderAction", _args);
 		};
 
@@ -557,6 +549,42 @@ CLASS("IntelCommanderAction", "Intel")
 	//  
 	METHOD("getShortName") {
 		"Action"
+	} ENDMETHOD;
+
+	
+	/*
+	Method: getTMinutes
+	Gets the mission time in minutes relative to its start (like spaceship launch)
+
+	Returns: float
+	*/
+	METHOD("getTMinutes") {
+		params [P_THISOBJECT];
+		pr _dateDeparture = T_GETV("dateDeparture");
+		pr _numberDiff = (_dateDeparture call misc_fnc_dateToNumber) - (date call misc_fnc_dateToNumber);
+		pr _futureEvent = true;
+		if (_numberDiff < 0) then {
+			_numberDiff = -_numberDiff;
+			_futureEvent = false;
+		};
+		pr _dateDiff = numberToDate [/*_dateNow#0*/0, _numberDiff];
+		_dateDiff params ["_y", "_month", "_d", "_h", "_m"];
+		_month = _month - 1; // Because month counting starts with 1
+		_d = _d - 1; // Because day counting starts with 1
+		pr _minutes = ((_month * 30 + _d) * 24 + _h) * 60 + _m;
+		// T-1 is one minute in the future, T+1 is in the past
+		if(_futureEvent) then { 
+			-_minutes
+		} else {
+			_minutes
+		}
+	} ENDMETHOD;
+
+	METHOD("getHoursMinutes") {
+		params [P_THISOBJECT];
+		pr _t = T_CALLM0("getTMinutes");
+		// T, Hours, Minutes, bool Future
+		[_t, floor (abs _t / 60), abs floor (abs _t % 60), _t < 0];
 	} ENDMETHOD;
 
 	/*
@@ -594,7 +622,9 @@ CLASS("IntelCommanderAction", "Intel")
 							_thisObject, // Unique string
 							true, // Enable
 							false, // Cycle
-							true]; // Draw src and dest markers
+							true, // Draw src and dest markers
+							[T_GETV("side"), true] call BIS_fnc_sideColor
+							];
 				CALLSM("ClientMapUI", "drawRoute", _args);
 				T_SETV("shownOnMap", true);
 			};
@@ -608,7 +638,9 @@ CLASS("IntelCommanderAction", "Intel")
 							_thisObject, // Unique string
 							false, // Enable
 							false, // Cycle
-							false]; // Draw src and dest markers
+							false, // Draw src and dest markers
+							[T_GETV("side"), true] call BIS_fnc_sideColor
+							];
 				CALLSM("ClientMapUI", "drawRoute", _args);
 				T_SETV("shownOnMap", false);
 			};
@@ -646,6 +678,7 @@ CLASS("IntelCommanderActionReinforce", "IntelCommanderAction")
 		The source garrison that sent the reinforcements. Probably players have no use to this.
 	*/
 	VARIABLE_ATTR("srcGarrison", [ATTR_SERIALIZABLE]);
+
 	/* 
 		variable: tgtGarrison
 		The destination garrison that will be reinforced. Probably players have no use to this.
@@ -654,7 +687,39 @@ CLASS("IntelCommanderActionReinforce", "IntelCommanderAction")
 
 	//  
 	METHOD("getShortName") {
-		"Reinforce"
+		params [P_THISOBJECT];
+		T_GETV("type");
+	} ENDMETHOD;
+ENDCLASS;
+
+
+/*
+	Class: Intel.IntelCommanderActionSupply
+	Intel about reinforcement commander action.
+*/
+CLASS("IntelCommanderActionSupply", "IntelCommanderAction")
+
+	// Type of supplies
+	VARIABLE_ATTR("type", [ATTR_SERIALIZABLE]);
+
+	// How much supplies
+	VARIABLE_ATTR("amount", [ATTR_SERIALIZABLE]);
+
+	/* 
+		variable: srcGarrison
+		The source garrison that sent the reinforcements. Probably players have no use to this.
+	*/
+	VARIABLE_ATTR("srcGarrison", [ATTR_SERIALIZABLE]);
+
+	/* 
+		variable: tgtGarrison
+		The destination garrison that will be reinforced. Probably players have no use to this.
+	*/
+	VARIABLE_ATTR("tgtGarrison", [ATTR_SERIALIZABLE]);
+
+	METHOD("getShortName") {
+		params [P_THISOBJECT];
+		T_GETV("type");
 	} ENDMETHOD;
 ENDCLASS;
 
@@ -680,7 +745,7 @@ CLASS("IntelCommanderActionConstructLocation", "IntelCommanderAction")
 		params [P_THISOBJECT];
 		pr _type = T_GETV("type");
 		// pr _typeStr = CALLSM1("Location", "getTypeString", _type);
-		"Make RB" // Temp, since we only deploy roadblocks now anyway
+		"Construct Roadblock" // Temp, since we only deploy roadblocks now anyway
 	} ENDMETHOD;
 ENDCLASS;
 
@@ -706,7 +771,7 @@ CLASS("IntelCommanderActionAttack", "IntelCommanderAction")
 
 	//  
 	METHOD("getShortName") {
-		"ATTACK"
+		"Attack"
 	} ENDMETHOD;
 ENDCLASS;
 
@@ -733,7 +798,7 @@ CLASS("IntelCommanderActionPatrol", "IntelCommanderAction")
 	/* virtual override */ METHOD("showOnMap") {
 		params [P_THISOBJECT, P_BOOL("_show")];
 
-		OOP_INFO_1("SHOW ON MAP: %1", _show);
+		//OOP_INFO_1("SHOW ON MAP: %1", _show);
 
 		// Variable might be not initialized
 		if (isNil {T_GETV("shownOnMap")}) exitWith {
@@ -746,7 +811,9 @@ CLASS("IntelCommanderActionPatrol", "IntelCommanderAction")
 							_thisObject, // Unique string
 							true, // Enable
 							true, // Cycle
-							false]; // Draw src and dest markers
+							false, // Draw src and dest markers
+							[T_GETV("side"), true] call BIS_fnc_sideColor
+							];
 				CALLSM("ClientMapUI", "drawRoute", _args);
 				// params ["_thisClass", ["_posArray", [], [[]]], "_uniqueString", ["_enable", false, [false]], ["_cycle", false, [false]], ["_drawSrcDest", false, [false]] ];
 				T_SETV("shownOnMap", true);
@@ -758,7 +825,9 @@ CLASS("IntelCommanderActionPatrol", "IntelCommanderAction")
 							_thisObject, // Unique string
 							false, // Enable
 							false, // Cycle
-							false]; // Draw src and dest markers
+							false, // Draw src and dest markers
+							[T_GETV("side"), true] call BIS_fnc_sideColor
+							];
 				CALLSM("ClientMapUI", "drawRoute", _args);
 				T_SETV("shownOnMap", false);
 			};

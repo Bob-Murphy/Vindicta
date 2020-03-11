@@ -12,19 +12,14 @@ Parent: <CmdrAction>
 
 CLASS("ConstructLocationCmdrAction", "CmdrAction")
 
-	VARIABLE("srcGarrID");
-	VARIABLE("locPos");
-	VARIABLE("locType");
-	VARIABLE("detachmentEffVar");	// Efficiency
-	VARIABLE("detachmentCompVar");	// Composition
-	VARIABLE("detachedGarrIdVar");
-	VARIABLE("startDateVar");
-	VARIABLE("buildRes");
-
-	#ifdef DEBUG_CMDRAI
-	VARIABLE("debugColor");
-	VARIABLE("debugSymbol");
-	#endif
+	VARIABLE_ATTR("srcGarrID", [ATTR_SAVE]);
+	VARIABLE_ATTR("locPos", [ATTR_SAVE]);
+	VARIABLE_ATTR("locType", [ATTR_SAVE]);
+	VARIABLE_ATTR("detachmentEffVar", [ATTR_SAVE]);	// Efficiency
+	VARIABLE_ATTR("detachmentCompVar", [ATTR_SAVE]);	// Composition
+	VARIABLE_ATTR("detachedGarrIdVar", [ATTR_SAVE]);
+	VARIABLE_ATTR("startDateVar", [ATTR_SAVE]);
+	VARIABLE_ATTR("buildRes", [ATTR_SAVE]);
 
 	METHOD("new") {
 		params [P_THISOBJECT, P_NUMBER("_srcGarrID"), P_POSITION("_locPos"), P_DYNAMIC("_locType")];
@@ -43,11 +38,6 @@ CLASS("ConstructLocationCmdrAction", "CmdrAction")
 		
 		private _startDateVar = T_CALLM1("createVariable", DATE_NOW); // Default to immediate, overriden at updateScore
 		T_SETV("startDateVar", _startDateVar);
-
-		#ifdef DEBUG_CMDRAI
-		T_SETV("debugColor", "ColorBrown");
-		T_SETV("debugSymbol", "loc_Ruin")
-		#endif
 	} ENDMETHOD;
 
 	METHOD("delete") {
@@ -233,13 +223,11 @@ CLASS("ConstructLocationCmdrAction", "CmdrAction")
 		// How much to scale the score for distance to target
 		private _distCoeff = 1; //CALLSM("CmdrAction", "calcDistanceFalloff", [_srcGarrPos ARG _tgtLocPos]); // We don't care how far is it really, it's close enough anyway
 		// How much to scale the score for transport requirements
-		private _transportationScore = CALLM1(_srcGarr, "transportationScore", _effRemaining); // We always need transport when constructing something
-
 		private _detachEffStrength = CALLSM1("CmdrAction", "getDetachmentStrength", _effAllocated);				// A number
 
 		private _strategy = CALL_STATIC_METHOD("AICommander", "getCmdrStrategy", [_side]);
 		
-		private _scoreResource = _detachEffStrength * _distCoeff * _transportationScore;
+		private _scoreResource = _detachEffStrength * _distCoeff;
 
 		// Same as in takeLocation, but we generally want to build less than to occupy existing pre-defined places
 		private _scorePriority = CALLM(_strategy, "getConstructLocationDesirability", [_worldNow ARG _tgtLocPos ARG _tgtLocType ARG _side]);
@@ -264,9 +252,9 @@ CLASS("ConstructLocationCmdrAction", "CmdrAction")
 		T_SET_AST_VAR("startDateVar", _startDate);
 
 		// Uncomment for some more debug logging
-		 OOP_DEBUG_MSG("[w %1 a %2] %3 construct %4 Score %5, _detachEff = %6, _detachEffStrength = %7, _distCoeff = %8, _transportationScore = %9",
+		 OOP_DEBUG_MSG("[w %1 a %2] %3 construct %4 Score %5, _detachEff = %6, _detachEffStrength = %7, _distCoeff = %8",
 		 	[_worldNow ARG _thisObject ARG LABEL(_srcGarr) ARG [_tgtLocType ARG _tgtLocPos] ARG [_scorePriority ARG _scoreResource] 
-		 	ARG _effAllocated ARG _detachEffStrength ARG _distCoeff ARG _transportationScore]);
+		 	ARG _effAllocated ARG _detachEffStrength ARG _distCoeff]);
 
 		// APPLY STRATEGY
 		// Get our Cmdr strategy implementation and apply it
@@ -366,8 +354,7 @@ CLASS("ConstructLocationCmdrAction", "CmdrAction")
 		private _locPos = T_GETV("locPos");
 		private _locType = T_GETV("locType");
 
-		T_PRVAR(debugColor);
-		T_PRVAR(debugSymbol);
+		GET_DEBUG_MARKER_STYLE(_thisObject) params ["_debugColor", "_debugSymbol"];
 
 		[_srcGarrPos, _locPos, _debugColor, 8, _thisObject + "_line"] call misc_fnc_mapDrawLine;
 
@@ -416,6 +403,8 @@ CLASS("ConstructLocationCmdrAction", "CmdrAction")
 	} ENDMETHOD;
 
 ENDCLASS;
+
+REGISTER_DEBUG_MARKER_STYLE("ConstructLocationCmdrAction", "ColorBrown", "loc_Ruin");
 
 #ifdef _SQF_VM
 

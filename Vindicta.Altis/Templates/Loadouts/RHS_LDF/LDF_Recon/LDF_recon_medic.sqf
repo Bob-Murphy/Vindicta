@@ -7,11 +7,10 @@ removeBackpack this;
 removeHeadgear this;
 removeGoggles this;
 
-_RandomUniform = ["U_O_R_Gorka_01_F", "U_O_R_Gorka_01_brown_F"] call BIS_fnc_selectRandom;
-this addUniform _RandomUniform;
-_RandomHeadgear = ["rhssaf_booniehat_digital", "rhssaf_booniehat_digital", "rhssaf_bandana_digital", "rhssaf_bandana_smb", "rhs_beanie_green"] call BIS_fnc_selectRandom;
+this forceAddUniform "U_O_R_Gorka_01_F";
+_RandomHeadgear = selectRandom ["rhssaf_booniehat_digital", "rhssaf_booniehat_digital", "rhssaf_bandana_digital", "rhssaf_bandana_smb", "rhs_beanie_green"];
 this addHeadgear _RandomHeadgear;
-_RandomGoggles = ["G_Bandanna_khk", "G_Bandanna_oli", "G_Balaclava_oli", "" ] call BIS_fnc_selectRandom;
+_RandomGoggles = selectRandom ["G_Bandanna_khk", "G_Bandanna_oli", "G_Balaclava_oli", "" ];
 this addGoggles _RandomGoggles;
 this addVest "V_TacVest_oli";
 this addBackpack "rhs_medic_bag";
@@ -22,6 +21,7 @@ this addPrimaryWeaponItem "rhs_acc_perst1ik";
 this addPrimaryWeaponItem "rhs_30Rnd_762x39mm_polymer";
 
 this addItemToUniform "FirstAidKit";
+this addItemToUniform "rhs_acc_1pn93_1";
 for "_i" from 1 to 2 do {this addItemToUniform "rhs_mag_zarya2";};
 this addItemToUniform "rhssaf_mag_br_m84";
 this addItemToUniform "rhssaf_mag_br_m75";

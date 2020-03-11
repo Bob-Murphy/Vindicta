@@ -22,9 +22,7 @@ Builds this location depending on its type
 
 params ["_thisObject"];
 
-if (T_GETV("isBuilt")) exitWith {
-	//OOP_ERROR_0("Trying to build a location that is already built!");
-};
+if (T_GETV("isBuilt")) exitWith {};
 
 if (T_GETV("type") == LOCATION_TYPE_ROADBLOCK) exitWith {
 	pr _pos = T_GETV("pos");
@@ -95,9 +93,15 @@ if (T_GETV("type") == LOCATION_TYPE_ROADBLOCK) exitWith {
 	
 	// Add all the objects to the location
 	// Enable their dynamic simulation
+	// Broadcast to all clients so that they rotate the objects
 	{
 		T_CALLM1("addObject", _x);
 		_x enableDynamicSimulation true;
+		private _posWorld = getPosWorld _x;
+		private _vdir = vectorDir _x;
+		private _vup = vectorUp _x;
+		[_x, _posWorld] remoteExec ["setPosWorld"];
+		[_x, [_vdir, _vup]] remoteExec ["setVectorDirAndUp"];
 	} forEach _objects;
 
 	// The End!

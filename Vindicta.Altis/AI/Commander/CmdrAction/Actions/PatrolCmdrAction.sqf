@@ -12,27 +12,22 @@ Parent: <CmdrAction>
 
 CLASS("PatrolCmdrAction", "CmdrAction")
 	// Garrison ID the attack originates from
-	VARIABLE("srcGarrId");
+	VARIABLE_ATTR("srcGarrId", [ATTR_SAVE]);
 	// Route array composed of targets (see CmdrAITarget.sqf)
-	VARIABLE("routeTargets");
+	VARIABLE_ATTR("routeTargets", [ATTR_SAVE]);
 	// Efficency of the detachment, an AST_VAR wrapper
-	VARIABLE("detachmentEffVar");
+	VARIABLE_ATTR("detachmentEffVar", [ATTR_SAVE]);
 	// Composition of detachment, an AST_VAR wrapper
-	VARIABLE("detachmentCompVar");
+	VARIABLE_ATTR("detachmentCompVar", [ATTR_SAVE]);
 	// Garrison ID of the detachment performing the patrol, an AST_VAR wrapper
-	VARIABLE("detachedGarrIdVar");
+	VARIABLE_ATTR("detachedGarrIdVar", [ATTR_SAVE]);
 	// Start date for the patrol action, an AST_VAR wrapper
-	VARIABLE("startDateVar");
+	VARIABLE_ATTR("startDateVar", [ATTR_SAVE]);
 
 	// Next patrol waypoint target
-	VARIABLE("targetVar");
+	VARIABLE_ATTR("targetVar", [ATTR_SAVE]);
 	// Patrol waypoint targets array wrapped in AST_VAR
-	VARIABLE("routeTargetsVar");
-
-#ifdef DEBUG_CMDRAI
-	VARIABLE("debugColor");
-	VARIABLE("debugSymbol");
-#endif
+	VARIABLE_ATTR("routeTargetsVar", [ATTR_SAVE]);
 
 	/*
 	Constructor: new
@@ -49,11 +44,6 @@ CLASS("PatrolCmdrAction", "CmdrAction")
 
 		T_SETV("srcGarrId", _srcGarrId);
 		T_SETV("routeTargets", +_routeTargets);
-
-#ifdef DEBUG_CMDRAI
-		T_SETV("debugColor", "ColorYellow");
-		T_SETV("debugSymbol", "mil_pickup");
-#endif
 
 		// Start date for this action, default to immediate
 		private _startDateVar = T_CALLM1("createVariable", DATE_NOW);
@@ -337,8 +327,7 @@ CLASS("PatrolCmdrAction", "CmdrAction")
 		private _srcGarrPos = GETV(_srcGarr, "pos");
 		private _routeTargetPositions = T_GETV("routeTargets") apply { [_world, _x] call Target_fnc_GetPos };
 
-		T_PRVAR(debugColor);
-		T_PRVAR(debugSymbol);
+		GET_DEBUG_MARKER_STYLE(_thisObject) params ["_debugColor", "_debugSymbol"];
 		
 		private _lastPos = _srcGarrPos;
 		{
@@ -424,7 +413,7 @@ CLASS("PatrolCmdrAction", "CmdrAction")
 
 		// Try to allocate units
 		pr _payloadWhitelistMask = if (_needTransport) then {T_comp_ground_or_infantry_mask} else {T_comp_infantry_mask};
-		pr _payloadBlacklistMask = T_comp_static_mask;					// Don't take static weapons under any conditions
+		pr _payloadBlacklistMask = T_comp_static_or_cargo_mask;					// Don't take static weapons under any conditions
 		pr _transportWhitelistMask = T_comp_ground_or_infantry_mask;	// Take ground units, take any infantry to satisfy crew requirements
 		pr _transportBlacklistMask = [];
 		pr _args = [_enemyEff, _allocationFlags, _srcGarrComp, _srcGarrEff,
@@ -460,12 +449,6 @@ CLASS("PatrolCmdrAction", "CmdrAction")
 		// specifically efficiency and transport. Score is 0 when full requirements cannot be met, and 
 		// increases with how much over the full requirements the source garrison is (i.e. how much OVER the 
 		// required efficiency it is). 
-		private _transportationScore = 0;
-		if(!_needTransport) then {
-			_transportationScore = 1;
-		} else {
-			_transportationScore = CALLM(_srcGarr, "transportationScore", [_effAllocated])
-		};
 
 		// Save the calculation of the efficiency for use later.
 		// We DON'T want to try and recalculate the detachment against the REAL world state when the action is actually active because
@@ -476,7 +459,7 @@ CLASS("PatrolCmdrAction", "CmdrAction")
 		private _detachEffStrength = CALLSM1("CmdrAction", "getDetachmentStrength", _effAllocated);
 
 		// Our final resource score
-		private _scoreResource = _detachEffStrength * _transportationScore;
+		private _scoreResource = _detachEffStrength;
 		private _scorePriority = 1;
 
 		// CALCULATE START DATE
@@ -500,9 +483,9 @@ CLASS("PatrolCmdrAction", "CmdrAction")
 		T_SET_AST_VAR("startDateVar", _startDate);
 
 		// Uncomment this for more detailed logging
-		// OOP_DEBUG_MSG("[w %1 a %2] %3 take %4 Score %5, _detachEff = %6, _detachEffStrength = %7, _distCoeff = %8, _transportationScore = %9",
+		// OOP_DEBUG_MSG("[w %1 a %2] %3 take %4 Score %5, _detachEff = %6, _detachEffStrength = %7, _distCoeff = %8",
 		// 	[_worldNow ARG _thisObject ARG LABEL(_srcGarr) ARG LABEL(_tgtLoc) ARG [_scorePriority ARG _scoreResource] 
-		// 	ARG _effAllocated ARG _detachEffStrength ARG _distCoeff ARG _transportationScore]);
+		// 	ARG _effAllocated ARG _detachEffStrength ARG _distCoeff]);
 
 		// APPLY STRATEGY
 		// Get our Cmdr strategy implementation and apply it
@@ -574,6 +557,8 @@ CLASS("PatrolCmdrAction", "CmdrAction")
 
 
 ENDCLASS;
+
+REGISTER_DEBUG_MARKER_STYLE("PatrolCmdrAction", "ColorYellow", "mil_pickup");
 
 #ifdef _SQF_VM
 
